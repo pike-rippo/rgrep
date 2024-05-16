@@ -22,12 +22,12 @@ fn main() -> io::Result<()>{
     let mut is_ignore_case: bool = false;
     let mut is_show_line: bool = false;
 
-    for i in 0..limit{
-        match &*args[i]{
+    for arg in args.iter().take(limit){
+        match &arg[..]{
             "/u" => {is_colored = false; count += 1},
             "/i" => {is_ignore_case = true; count += 1},
             "/n" => {is_show_line = true; count += 1},
-            _ => (),
+            _ => ()
         }
     }
     for _ in 0..count { args.remove(0); }
@@ -35,45 +35,39 @@ fn main() -> io::Result<()>{
     let mut buffer = Vec::new();
     io::stdin().read_to_end(&mut buffer).expect("Failed to read from stdin");
 
-    match SHIFT_JIS.decode(&buffer) {
-        (text, _, _) => {
-            let decoded_text = text.trim();
-            let lines: Vec<&str> = decoded_text.lines().collect();
+    let (text, _, _) = SHIFT_JIS.decode(&buffer);
+    {
+        let decoded_text = text.trim();
+        let lines: Vec<&str> = decoded_text.lines().collect();
 
-            for i in 0..lines.len(){
-                let line_count = i + 1;
-                let line = &lines[i];
+        for (i, line) in lines.iter().enumerate(){
+            let line_count: usize = i + 1;
 
-                for i in 0..args.len(){
-                    let start = if is_ignore_case {line.to_lowercase().find(&args[i].to_lowercase())} else {line.find(&args[i])};
-                    match start {
-                        Some(position) =>{
-                            if is_show_line{
-                                print!("{:>3}|", &line_count);
-                            }
-                            if !is_colored{
-                                println!("{line}");
-                            }else{
-                                let remainder = i % 5;
-                                let color_code = match remainder  {
-                                    0 => 32,
-                                    1 => 33, 
-                                    2 => 35, 
-                                    3 => 36, 
-                                    4 => 31, 
-                                    _ => 37, 
-                                };
-                                print!("{}", &line[0..position]);
-                                print!("\x1B[{}m{}\x1B[0m", color_code, &line[position..position + args[i].len()]);
-                                println!("{}", &line[position + args[i].len()..])
-                            }
-                        },
-                        None => (),
+            for i in 0..args.len(){
+                let start: Option<usize> = if is_ignore_case {line.to_lowercase().find(&args[i].to_lowercase())} else {line.find(&args[i])};
+                if let Some(position) = start {
+                        if is_show_line{
+                            print!("{:>3}|", &line_count);
+                        }
+                        if !is_colored{
+                            println!("{line}");
+                        }else{
+                            let remainder = i % 5;
+                            let color_code = match remainder  {
+                                0 => 32,
+                                1 => 33, 
+                                2 => 35, 
+                                3 => 36, 
+                                4 => 31, 
+                                _ => 37, 
+                            };
+                            print!("{}", &line[0..position]);
+                            print!("\x1B[{}m{}\x1B[0m", color_code, &line[position..position + args[i].len()]);
+                            println!("{}", &line[position + args[i].len()..])
+                        }
                     }
                 }
             }
         }
+        Ok(())
     }
-
-    Ok(())
-}
